@@ -13,16 +13,27 @@ Scope
 The Greenhouse is only containing for three types of maximum of plants.The technical system is only including temperature control, watering system and fertilizing.Using Wi-Fi system to control the condition and the function of the greenhouse such as the moisture of the soil,temperature of the greenhouse, auto fertilizing of the plants.
 
 boards and sensors used.. 
+
 Arduino Uno Set
+
 Temperature Sensor(LM35)
+
 ESP8266 Wifi Module
+
 Humidity Sensor(DHT11)
+
 Ultrasonic Sensor(HC-SR04)
+
 Moisture Sensor (SKU:SEN0114)
+
 UV Light(Full Spectrum  E27 18W/28W  Led Grow Light)
+
 220V/240V AC Fan - 4*4 inch Cooling Fan
+
 Solenoid Valve(Watering and  Ferterlizing)
+
 LDR Sensor
+
 PIR Sensor
 
 
