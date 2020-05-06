@@ -1,0 +1,76 @@
+3.	Get Data
+
+void get_data(String Completeurl){
+
+  int Totallength = Completeurl.length();
+  Serial.print(Completeurl);
+  //Serial.print(sizeof(URL_data));
+  char URL_data[Totallength+1];
+  Completeurl.toCharArray(URL_data, Totallength+1);
+  Serial.print(sizeof(URL_data));
+  
+  counter=0;//keeps track of the payload size
+  payload_size=0;
+  for(int i=0; i<(sizeof(URL_data)-1); i++){//run through the URL we're going to use - sizeof() returns +1 extra, so subtract it out
+    payload[payload_size+i] = URL_data[i];//build up the payload
+    counter++;//increment the counter
+  }//for int
+  payload_size = counter+payload_size;//payload size is just the counter value - more on this when we need to build out the payload with more data
+
+
+  if(connect_ESP()){//this calls 'connect_ESP()' and expects a '1' back if successful
+    if(read_until_ESP(keyword_html_start_b,sizeof(keyword_html_start_b),10000,0)){
+      if(read_until_ESP(keyword_html_end_b,sizeof(keyword_html_end_b),10000,1)){
+        for(int i=1; i<=(scratch_data_from_ESP[0]-sizeof(keyword_html_end_b)+1); i++)//go see 'setup' and how this was done with the ip address for more info
+          data1[i]=scratch_data_from_ESP[i];//store it all in
+        data1[0]=(scratch_data_from_ESP[0]-sizeof(keyword_html_end_b)+1);//set the length at [0]
+        
+        if(read_until_ESP(keyword_html_start_b,sizeof(keyword_html_start_b),10000,0)){
+          if(read_until_ESP(keyword_html_end_b,sizeof(keyword_html_end_b),10000,1)){
+            for(int i=1; i<=(scratch_data_from_ESP[0]-sizeof(keyword_html_end_b)+1); i++)
+              data2[i]=scratch_data_from_ESP[i];//store it in
+            data2[0]=(scratch_data_from_ESP[0]-sizeof(keyword_html_end_b)+1);
+            
+            if(read_until_ESP(keyword_html_start_b,sizeof(keyword_html_start_b),10000,0)){
+              if(read_until_ESP(keyword_html_end_b,sizeof(keyword_html_end_b),10000,1)){
+                for(int i=1; i<=(scratch_data_from_ESP[0]-sizeof(keyword_html_end_b)+1); i++)
+                  data3[i]=scratch_data_from_ESP[i];//store it in
+                data3[0]=(scratch_data_from_ESP[0]-sizeof(keyword_html_end_b)+1);
+            //now that we have our data, go wait for the connection to disconnect - the ESP will eventually return 'Unlink'
+            
+                if(read_until_ESP(keyword_linkdisc,sizeof(keyword_linkdisc),5000,0)){
+                  Serial.println("FOUND DATA & DISCONNECTED");
+                  serial_dump_ESP();//now we can clear out the buffer and read whatever is still there
+                  //let's see how the data looks
+                  Serial.print("Lamp=");
+                  lamp = "";
+                  for(int i=1; i<=data1[0]; i++)
+                    lamp += data1[i];
+                  Serial.print(lamp);
+                  Serial.println("");
+                  Serial.print("Fan=");
+                  fan = "";
+                  for(int i=1; i<=data2[0]; i++){
+                    fan += data2[i];
+                    }
+                  Serial.print(fan);
+                  Serial.println("");
+                  Serial.print("Water=");
+                  water = "";
+                  for(int i=1; i<=data3[0]; i++)
+                    water += data3[i];
+                  Serial.print(water);
+                  Serial.println("");
+                  //that's it!!
+                }//link
+              }
+            }
+          }//end b views
+        }//startb views        
+      }//end b sub
+    }//startb sub
+  }//connect ESP
+}//get data
+
+
+

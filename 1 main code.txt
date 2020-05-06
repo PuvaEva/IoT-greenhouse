@@ -1,0 +1,213 @@
+1.	Main Program
+
+#include <SoftwareSerial.h>
+
+#include <dht.h>
+
+#
+define ESP8266_rxPin 10# define ESP8266_txPin 11
+
+# define dht_apin A2
+dht DHT;
+
+String rx_byte = "";
+
+int sensorPin1 = A5;
+int sensorPin2 = A4; // select the input pin for LDR int rainPin = A3;
+int rainPin = A3;
+int greenLED = 6;
+int redLED = 7;
+
+int thresholdValue = 800; // you can adjust the threshold value int sensorValue2 = 0;
+int sensorValue1 = 0; // variable to store the value coming from the sensor
+int sensorValue2 = 0;
+String s1, s2, s3, s4, s5, s6, out1 = "0", out2 = "0", out3 = "0";
+
+int led = 8; // the pin that the LED is atteched to
+int sensor = 9; // the pin that the sensor is atteched to
+int state = LOW; // by default, no motion detected
+int val = 0; // variable to store the sensor status (value)
+
+//SSID + KEY
+const char SSID_ESP[] = "";
+const char SSID_KEY[] = "";
+
+int Restartcount = 0;
+
+// URLs
+//char URL_data[] = "GET http://idp.genpoint.org HTTP/1.0\r\n\r\n"; //'Okgo' is your data if you want to change data, please change 'Okgo' to the data that u want to send https://idp.genpoint.org?num=Okgo
+const String lamp = "";
+const String fan = "";
+const String water = "";
+//MODES
+const char CWMODE = '1'; //CWMODE 1=STATION, 2=APMODE, 3=BOTH
+const char CIPMUX = '1'; //CWMODE 0=Single Connection, 1=Multiple Connections
+
+SoftwareSerial ESP8266(ESP8266_rxPin, ESP8266_txPin); // rx tx
+
+//DEFINE ALL FUNCTIONS HERE
+boolean setup_ESP();
+boolean read_until_ESP(const char keyword1[], int key_size, int timeout_val, byte mode);
+void timeout_start();
+boolean timeout_check(int timeout_ms);
+void serial_dump_ESP();
+boolean connect_ESP();
+void get_data();
+
+//DEFINE ALL GLOBAL VARIABLES HERE
+unsigned long timeout_start_val;
+char scratch_data_from_ESP[20]; //first byte is the length of bytes
+char payload[150];
+byte payload_size = 0, counter = 0;
+char ip_address[16];
+char data1[13];
+char data2[13];
+char data3[13];
+
+//DEFINE KEYWORDS HERE
+const char keyword_OK[] = "OK";
+const char keyword_Ready[] = "Ready";
+const char keyword_no_change[] = "no change";
+const char keyword_blank[] = "#&";
+const char keyword_ip[] = "192.";
+const char keyword_rn[] = "\r\n";
+const char keyword_quote[] = "\"";
+const char keyword_carrot[] = ">";
+const char keyword_sendok[] = "SEND OK";
+const char keyword_linkdisc[] = "Unlink";
+
+//keywords for youtube
+const char keyword_html_start_b[] = "label>";
+const char keyword_html_end_b[] = "</label";
+
+void setup() { //        SETUP     START
+  //Pin Modes for ESP TX/RX
+  pinMode(ESP8266_rxPin, INPUT);
+  pinMode(ESP8266_txPin, OUTPUT);
+  pinMode(13, OUTPUT); //Trigger ESP
+  ESP8266.begin(9600); //default baudrate for ESP
+  ESP8266.listen(); //not needed unless using other software serial instances
+  Serial.begin(115200); //for status and debug
+  digitalWrite(13, HIGH);
+  delay(3000); //delay before kicking things off
+
+  //Sensors
+  pinMode(greenLED, OUTPUT);
+  pinMode(redLED, OUTPUT);
+  digitalWrite(greenLED, LOW);
+  digitalWrite(redLED, LOW);
+  pinMode(led, OUTPUT); // initalize LED as an output
+  pinMode(sensor, INPUT); // initialize sensor as an input
+
+  setup_ESP(); //go setup the ESP 
+} //                    SETUP     END
+
+void loop() { //         LOOP     START
+
+  ldr();
+  soil();
+  ir();
+  dhts();
+  String Completeurl = "GET http://idp.genpoint.org?s1=" + s1 + "&s2=" + s2 + "&s3=" + s3 + "&s4=" + s4 + "&s5=" + s5 + "&s6=" + s6 + "&out1=" + out1 + "&out2=" + out2 + "&out3=" + out3 + " HTTP/1.0\r\n\r\n";
+  Serial.print(Completeurl);
+  get_data(Completeurl);
+  trigger();
+  Completeurl = "GET http://idp.genpoint.org HTTP/1.0\r\n\r\n";
+  for (int i = 0; i < 1; i++) {
+    get_data(Completeurl);
+    trigger();
+    delay(300);
+  }
+} //                    LOOP     END
+
+void ldr()
+
+{
+  Serial.print("");
+  sensorValue1 = analogRead(sensorPin1); // read the value from the sensor sensorValue2 = analogRead(sensorPin2);
+  sensorValue2 = analogRead(sensorPin2);
+  s1 = String(sensorValue1);
+  s2 = String(sensorValue2);
+  Serial.print("LDR1:");
+  Serial.println(sensorValue1); //prints the values coming from the sensor on the screen Serial.println("LDR2:");
+  Serial.print("LDR2:");
+  Serial.println(sensorValue2);
+}
+
+void soil() {
+
+  // read the input on analog pin A3:
+  int sensorValue3 = analogRead(rainPin);
+  s3 = String(sensorValue3);
+  Serial.print(sensorValue3);
+  if (sensorValue3 < thresholdValue) {
+    Serial.println(" - Doesn't need watering");
+    //digitalWrite(greenLED, HIGH);
+    //unit7 = "ON";
+  } else {
+    Serial.println(" - Time to water your plant");
+    //digitalWrite(greenLED, LOW);
+    //unit7 = "OFF";
+  }
+}
+
+void ir() {
+  val = digitalRead(sensor); // read sensor value
+  if (val == HIGH) { // check if the sensor is HIGH
+    s4 = "1";
+    //digitalWrite(led, HIGH);  // turn LED ON
+    //unit9 = "ON";
+    if (state == LOW) {
+      Serial.println("Motion detected!");
+      state = HIGH; // update variable state to HIGH
+    }
+  } else {
+    //digitalWrite(led, LOW); // turn LED OFF
+    //unit9 = "OFF";
+    s4 = "0";
+    if (state == HIGH) {
+      Serial.println("Motion stopped!");
+      state = LOW; // update variable state to LOW
+    }
+  }
+}
+
+void dhts() {
+  DHT.read11(dht_apin);
+  Serial.print("Current humidity = ");
+  s5 = String(DHT.humidity);
+  Serial.print(DHT.humidity);
+  Serial.print("% ");
+  Serial.print("temperature = ");
+  s6 = String(DHT.temperature);
+  Serial.print(DHT.temperature);
+  Serial.println("C ");
+  Serial.print("");
+  //Fastest should be once every two seconds.
+}
+
+void trigger() {
+  if (lamp == "1") {
+    digitalWrite(redLED, HIGH);
+    out1 = "1";
+  } else {
+    digitalWrite(redLED, LOW);
+    out1 = "0";
+  }
+
+  if (fan == "1") {
+    digitalWrite(led, HIGH);
+    out2 = "1";
+  } else {
+    digitalWrite(led, LOW);
+    out2 = "0";
+  }
+
+  if (water == "1") {
+    digitalWrite(greenLED, HIGH);
+    out3 = "1";
+  } else {
+    digitalWrite(greenLED, LOW);
+    out3 = "0";
+  }
+  return 0;
